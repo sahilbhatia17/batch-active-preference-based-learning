@@ -25,6 +25,21 @@ def get_feedback(simulation_object, input_A, input_B):
             s = -1
     return psi, s
 
+def get_membership_feedback(simulation_object, input_A):
+    simulation_object.feed(input_A)
+    phi_A = simulation_object.get_features()
+    s = 0
+    while s==0:
+        selection = input('A to watch, yes/no to vote: ').lower()
+        if selection == 'a':
+            simulation_object.feed(input_A)
+            simulation_object.watch(1)
+        elif selection == 'yes':
+            s = 1
+        elif selection == 'no':
+            s = -1
+    return s
+
 
 def create_env(task):
     if task == 'driver':
