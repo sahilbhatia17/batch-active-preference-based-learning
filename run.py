@@ -17,7 +17,7 @@ elif method == "threshold":
         print("no reward function available for non-driver task")
     else:
         reward_weights = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 ,  0.38769675])
-        reward_threshold = demos.membership_threshold(N, M, reward_weights, task='driver', method="nonbatch")
+        reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
 else:
     print('There is no method called ' + method)
 
