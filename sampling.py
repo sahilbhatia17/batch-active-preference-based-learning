@@ -36,7 +36,7 @@ class Sampler(object):
 
 	def sample(self, N, T=50, burn=1000):
 		with mc.Model() as model:
-			x = mc.Uniform(name='x', lower=-np.ones(self.D), upper=np.ones(self.D), shape=4, testval=np.zeros(self.D))
+			x = mc.Uniform(name='x', lower=-np.ones(self.D), upper=np.ones(self.D), shape=self.D, testval=np.zeros(self.D))
 			
 			def sphere(x):
 				if(mc.math.ge(((x**2).sum()),1.)):
