@@ -55,8 +55,8 @@ class Sampler(object):
 			#burn can be used to get the trace values? is that good enough?
 			#samples = pm.sample(N*T+burn, thin=T, burn=burn, verbose=-1)
 			#need cores definition otherwise i get a broken pipe?
-			#...no clude what tune is
-			trace = mc.sample(N*T+burn, tune=T, cores=1)
+			#...no clude what tune is - needs a large number tune=(N*T+burn/2)?
+			trace = mc.sample(N*T+burn, tune=(N*T+burn/2), step=steps, cores=1)
 
 			samples = trace.get_values('x', burn=burn)
 			samples = np.array([x/np.linalg.norm(x) for x in samples])
