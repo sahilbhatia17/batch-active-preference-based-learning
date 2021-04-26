@@ -94,10 +94,12 @@ def nonbatch(task, method, N, M, checkpoints=None):
 def run_comparison_plots(num_preference_queries, num_membership_queries, ground_truth_reward, ground_truth_boundary, M, task='driver', method='nonbatch'):
     bsearch_num_samples = 2 ** num_membership_queries
     preference_learned_rewards = nonbatch(task, method, num_preference_queries, M, checkpoints=[num_preference_queries])[-1]
+    print("Completed preference queries.")
     simulation_object = create_env(task)
     # collect trajectories
     reward_samples_full_set = collect_trajectories(simulation_object, method, bsearch_num_samples, preference_learned_rewards)
     random_samples_full_set = collect_trajectories(simulation_object, "random", num_membership_queries, preference_learned_rewards)
+    print("Collected all trajectories.")
 
     # get the boundary and SVM values from the query methods
     preference_bsearch_boundary = membership_threshold(lattice.sort_on_rewards(reward_samples_full_set), simulation_object, get_labels=False)
@@ -108,6 +110,8 @@ def run_comparison_plots(num_preference_queries, num_membership_queries, ground_
     preference_svm_coeff = preference_svm_coeff / np.linalg.norm(preference_svm_coeff)
     random_svm_boundary = random_svm_boundary / np.linalg.norm(random_svm_coeff)
     random_svm_coeff = random_svm_coeff / np.linalg.norm(random_svm_coeff)
+    print("Completed membership queries.")
+
 
     #now, use them for evaluation
     def compute_angle(vec1, vec2):

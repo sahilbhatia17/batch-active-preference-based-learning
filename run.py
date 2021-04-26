@@ -27,6 +27,11 @@ elif method == "threshold":
             reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
         else:
             print("no reward weights, run preference query with N = ", N)
+elif method == "comparison":
+    reward_weights = np.array([0.60316787, -0.51733234, 0.48007103, 0.37160137])
+    boundary = 0.90
+    demos.run_comparison_plots(N, 10, reward_weights, boundary, M,
+                         task='driver', method='nonbatch')
 else:
     print('There is no method called ' + method)
 
