@@ -54,7 +54,10 @@ def batch(task, method, N, M, b):
 
 
 
-def nonbatch(task, method, N, M):
+def nonbatch(task, method, N, M, checkpoints=None):
+    if checkpoints is None:
+        checkpoints = []
+    checkpointed_weights = []
     simulation_object = create_env(task)
     d = simulation_object.num_of_features
     lower_input_bound = [x[0] for x in simulation_object.feed_bounds]
@@ -74,6 +77,9 @@ def nonbatch(task, method, N, M):
         w_samples = w_sampler.sample(M)
         mean_w_samples = np.mean(w_samples,axis=0)
         print('w-estimate = {}'.format(mean_w_samples/np.linalg.norm(mean_w_samples)))
+        if i in checkpoints:
+            checkpointed_weights.append(mean_w_samples/np.linalg.norm(mean_w_samples))
+            print("Weights saved at iteration {}".format(i))
         input_A, input_B = run_algo(method, simulation_object, w_samples)
         psi, s = get_feedback_auto(simulation_object, input_A, input_B)
         psi_set.append(psi)
@@ -81,7 +87,56 @@ def nonbatch(task, method, N, M):
     w_sampler.A = psi_set
     w_sampler.y = np.array(s_set).reshape(-1,1)
     w_samples = w_sampler.sample(M)
+    checkpointed_weights.append(mean_w_samples/np.linalg.norm(mean_w_samples))
     print('w-estimate = {}'.format(mean_w_samples/np.linalg.norm(mean_w_samples)))
+    return checkpointed_weights
+
+def run_comparison_plots(num_preference_queries, num_membership_queries, ground_truth_reward, ground_truth_boundary, M, task='driver', method='nonbatch'):
+    bsearch_num_samples = 2 ** num_membership_queries
+    preference_learned_rewards = nonbatch(task, method, num_preference_queries, M, checkpoints=[num_preference_queries])[-1]
+    simulation_object = create_env(task)
+    # collect trajectories
+    reward_samples_full_set = collect_trajectories(simulation_object, method, bsearch_num_samples, preference_learned_rewards)
+    random_samples_full_set = collect_trajectories(simulation_object, "random", num_membership_queries, preference_learned_rewards)
+
+    # get the boundary and SVM values from the query methods
+    preference_bsearch_boundary = membership_threshold(lattice.sort_on_rewards(reward_samples_full_set), simulation_object, get_labels=False)
+    preference_svm_coeff, preference_svm_boundary, preference_svm = svm_threshold(reward_samples_full_set[:num_membership_queries], simulation_object)
+    random_svm_coeff, random_svm_boundary, random_svm = svm_threshold(random_samples_full_set, simulation_object)
+    # normalize the preference coefficients
+    preference_svm_boundary = preference_svm_boundary / np.linalg.norm(preference_svm_coeff)
+    preference_svm_coeff = preference_svm_coeff / np.linalg.norm(preference_svm_coeff)
+    random_svm_boundary = random_svm_boundary / np.linalg.norm(random_svm_coeff)
+    random_svm_coeff = random_svm_coeff / np.linalg.norm(random_svm_coeff)
+
+    #now, use them for evaluation
+    def compute_angle(vec1, vec2):
+        return np.arccos(np.clip(np.dot(vec1, vec2), -1.0, 1.0))
+    difference_values = {}
+    difference_values["svm w/ reward"] = compute_angle(preference_svm_coeff, ground_truth_reward) \
+                                         + abs(preference_svm_boundary - ground_truth_boundary)
+
+    difference_values["svm w/ random"] = compute_angle(random_svm_coeff, ground_truth_reward) \
+                                         + abs(random_svm_boundary - ground_truth_boundary)
+    difference_values["bsearch w/ reward"] = compute_angle(preference_learned_rewards, ground_truth_reward) \
+                                         + abs(preference_bsearch_boundary - ground_truth_boundary)
+    print("Differences computed are: {}".format(difference_values))
+    return difference_values
+
+
+def collect_trajectories(simulation_object, samplemethod, num_samples, reward_values):
+    trajectory_set = []
+    def add_traj(samplemethod, traj_set):
+
+        sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
+        simulation_object.feed(sample_A)
+        phi_A = simulation_object.get_features()
+        # now, compute the reward for each sample
+        reward_A = np.sum(reward_values * phi_A)
+        traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
+    for idx in range(num_samples):
+        add_traj(samplemethod, trajectory_set)
+    return trajectory_set
 
 def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_membership_queries=0, task='driver', method="nonbatch"):
     # first, sample the trajectories from the distribution\
@@ -94,35 +149,17 @@ def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_
     # set the reward weights of the sampler
     # set the number of membership queries as a log function of the total # of samples
     num_membership_queries = max(num_membership_queries, int(math.ceil(math.log(num_weighted_samples + num_random_samples))))
-    reward_traj_set = []
-    random_traj_set = []
+    reward_traj_set = collect_trajectories(simulation_object, method, num_weighted_samples, reward_values)
+    random_traj_set = collect_trajectories(simulation_object, "random", num_random_samples, reward_values)
     w_true = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 ,  0.38769675])
-    # sample trajectories from the weighted samples
-    def add_traj(samplemethod, traj_set):
 
-        sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
-        simulation_object.feed(sample_A)
-        phi_A = simulation_object.get_features()
-        # now, compute the reward for each sample
-        reward_A = np.sum(reward_values * phi_A)
-        traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
-    
-    # first, sample trajectories using the given weights
-    for idx in range(num_weighted_samples):
-        add_traj(method, reward_traj_set)
-    # now, sample trajectories from the random samples
-    for idx in range(num_random_samples):
-        add_traj("random", random_traj_set) 
 
-    svm_reward_set = reward_traj_set[:num_membership_queries]
+    svm_reward_set = reward_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, method, num_weighted_samples, reward_values)
     #adding n more samples to the svm dataset --> n + log(n) samples
-    for idx in range(num_weighted_samples):
-        add_traj(method, svm_reward_set)
     
-    svm_random_set = random_traj_set[:num_membership_queries]
+    svm_random_set = random_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, "random", num_weighted_samples, reward_values)
     #adding n more samples to the svm dataset --> n + log(n) samples
-    for idx in range(num_weighted_samples):
-        add_traj("random", svm_random_set)
+
     
     full_traj_set = reward_traj_set + random_traj_set
     # sort the trajectories by reward
