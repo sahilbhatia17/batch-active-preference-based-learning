@@ -32,6 +32,29 @@ class Driver(DrivingSimulation):
 
         return [staying_in_lane, keeping_speed, heading, collision_avoidance]
 
+    def get_features_full(self):
+        recording = self.get_recording(all_info=False)
+        recording = np.array(recording)
+
+        # staying in lane (higher is better)
+        staying_in_lane = np.exp(-30*np.min([np.square(recording[:,0,0]-0.17), np.square(recording[:,0,0]), np.square(recording[:,0,0]+0.17)], axis=0))
+
+        # keeping speed (lower is better)
+        keeping_speed = np.square(recording[:,0,3]-1)
+
+        # heading (higher is better)
+        heading = np.sin(recording[:,0,2])
+
+        # collision avoidance (lower is better)
+        collision_avoidance = np.exp(-(7*np.square(recording[:,0,0]-recording[:,1,0])+3*np.square(recording[:,0,1]-recording[:,1,1])))
+
+        full_feature_array = np.zeros((len(recording), 4))
+        full_feature_array[:, 0] = staying_in_lane
+        full_feature_array[:, 1] = keeping_speed
+        full_feature_array[:, 2] = heading
+        full_feature_array[:, 3] = collision_avoidance
+        return full_feature_array
+
     @property
     def state(self):
         return [self.robot.x, self.human.x]

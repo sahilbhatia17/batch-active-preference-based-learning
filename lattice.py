@@ -34,3 +34,5 @@ def sort_on_rewards(node_list):
         sorted_reward_list[nodeidx].add_parent(node_list[nodeidx - 1])
     return sorted_reward_list
 
+# need: alphabet, solution -> alphabet sequence
+

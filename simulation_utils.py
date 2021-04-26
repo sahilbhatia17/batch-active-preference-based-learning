@@ -10,6 +10,7 @@ def get_feedback(simulation_object, input_A, input_B):
     simulation_object.feed(input_B)
     phi_B = simulation_object.get_features()
     psi = np.array(phi_A) - np.array(phi_B)
+    print(np.array(phi_A).shape)
     s = 0
     while s==0:
         selection = input('A/B to watch, 1/2 to vote: ').lower()
@@ -24,6 +25,26 @@ def get_feedback(simulation_object, input_A, input_B):
         elif selection == '2':
             s = -1
     return psi, s
+
+def get_feedback_auto(simulation_object, input_A, input_B, weights=None):
+    simulation_object.feed(input_A)
+    phi_A = simulation_object.get_features()
+    simulation_object.feed(input_B)
+    phi_B = simulation_object.get_features()
+    psi = np.array(phi_A) - np.array(phi_B)
+    if weights is None:
+        weights = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 , 0.38769675])
+    else:
+        weights = weights
+        
+    reward_A = np.dot(weights,phi_A)
+    reward_B = np.dot(weights,phi_B)
+    if reward_A > reward_B:
+        s = 1
+    else:
+        s = -1
+    print("Selected " + "A" if s == 1 else "Selected " + "B")
+    return psi,s
 
 def get_membership_feedback(simulation_object, input_A):
     simulation_object.feed(input_A)
@@ -40,6 +61,21 @@ def get_membership_feedback(simulation_object, input_A):
             s = -1
     return s
 
+def get_membership_feedback_auto(simulation_object, input_A,weights=None):
+    simulation_object.feed(input_A)
+    phi_A = simulation_object.get_features()
+    threshold = 0.74
+    if weights is None:
+        weights = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 , 0.38769675])
+    else:
+        weights = weights
+    reward = np.dot(weights,phi_A)
+    if reward < threshold:
+        s = -1
+    else:
+        s = 1
+    print("Trajectory is Positive" if s == 1 else "Trajectory is Negative")
+    return s
 
 def create_env(task):
     if task == 'driver':

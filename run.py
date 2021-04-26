@@ -16,8 +16,17 @@ elif method == "threshold":
     if task != 'driver':
         print("no reward function available for non-driver task")
     else:
-        reward_weights = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 ,  0.38769675])
-        reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
+        if N == 30:
+            reward_weights = np.array([0.62867544, -0.49269658,  0.49139338,  0.34720284])
+            reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
+        elif N == 40:
+            reward_weights = np.array([0.56694832,-0.47224288 , 0.47278642 , 0.48169415])
+            reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
+        elif N == 50:
+            reward_weights = np.array([0.60316787, -0.51733234,  0.48007103, 0.37160137])
+            reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
+        else:
+            print("no reward weights, run preference query with N = ", N)
 else:
     print('There is no method called ' + method)
 
