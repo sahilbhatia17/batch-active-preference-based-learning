@@ -54,7 +54,7 @@ def batch(task, method, N, M, b):
 
 
 
-def nonbatch(task, method, N, M, checkpoints=None):
+def nonbatch(task, method, N, M, weights, checkpoints=None):
     if checkpoints is None:
         checkpoints = []
     checkpointed_weights = []
@@ -68,7 +68,7 @@ def nonbatch(task, method, N, M, checkpoints=None):
     s_set = []
     input_A = np.random.uniform(low=2*lower_input_bound, high=2*upper_input_bound, size=(2*simulation_object.feed_size))
     input_B = np.random.uniform(low=2*lower_input_bound, high=2*upper_input_bound, size=(2*simulation_object.feed_size))
-    psi, s = get_feedback_auto(simulation_object, input_A, input_B) # psi is the difference, s is the 1 or -1 signal
+    psi, s = get_feedback_auto(simulation_object, input_A, input_B, weights) # psi is the difference, s is the 1 or -1 signal
     psi_set.append(psi)
     s_set.append(s)
     for i in range(1, N):
@@ -81,7 +81,7 @@ def nonbatch(task, method, N, M, checkpoints=None):
             checkpointed_weights.append(mean_w_samples/np.linalg.norm(mean_w_samples))
             print("Weights saved at iteration {}".format(i))
         input_A, input_B = run_algo(method, simulation_object, w_samples)
-        psi, s = get_feedback_auto(simulation_object, input_A, input_B)
+        psi, s = get_feedback_auto(simulation_object, input_A, input_B, weights)
         psi_set.append(psi)
         s_set.append(s)
     w_sampler.A = psi_set
@@ -91,20 +91,23 @@ def nonbatch(task, method, N, M, checkpoints=None):
     print('w-estimate = {}'.format(mean_w_samples/np.linalg.norm(mean_w_samples)))
     return checkpointed_weights
 
-def run_comparison_plots(num_preference_queries, num_membership_queries, ground_truth_reward, ground_truth_boundary, M, task='driver', method='nonbatch'):
+def run_comparison_plots(num_preference_queries, num_membership_queries, ground_truth_reward, ground_truth_boundary, M,  task='driver', method='nonbatch'):
     bsearch_num_samples = 2 ** num_membership_queries
-    preference_learned_rewards = nonbatch(task, method, num_preference_queries, M, checkpoints=[num_preference_queries])[-1]
+    preference_learned_rewards = nonbatch(task, method, num_preference_queries, M, ground_truth_reward, checkpoints=[num_preference_queries])[-1]
+
     print("Completed preference queries.")
     simulation_object = create_env(task)
     # collect trajectories
-    reward_samples_full_set = collect_trajectories(simulation_object, method, bsearch_num_samples, preference_learned_rewards)
-    random_samples_full_set = collect_trajectories(simulation_object, "random", num_membership_queries, preference_learned_rewards)
+    reward_samples_full_set = collect_trajectories(simulation_object, method, bsearch_num_samples, ground_truth_reward)
+    random_samples_full_set = collect_trajectories(simulation_object, "random", num_membership_queries, ground_truth_reward)
     print("Collected all trajectories.")
 
     # get the boundary and SVM values from the query methods
-    preference_bsearch_boundary = membership_threshold(lattice.sort_on_rewards(reward_samples_full_set), simulation_object, get_labels=False)
-    preference_svm_coeff, preference_svm_boundary, preference_svm = svm_threshold(reward_samples_full_set[:num_membership_queries], simulation_object)
-    random_svm_coeff, random_svm_boundary, random_svm = svm_threshold(random_samples_full_set, simulation_object)
+    preference_bsearch_boundary = membership_threshold(lattice.sort_on_rewards(reward_samples_full_set), simulation_object, ground_truth_reward, ground_truth_boundary, get_labels=False)
+    preference_svm_coeff, preference_svm_boundary, preference_svm = svm_threshold(reward_samples_full_set[:num_membership_queries],
+                                                                                  simulation_object, weights=ground_truth_reward, threshold=ground_truth_boundary)
+    random_svm_coeff, random_svm_boundary, random_svm = svm_threshold(random_samples_full_set,
+                                                                      simulation_object, weights=ground_truth_reward, threshold=ground_truth_boundary)
     # normalize the preference coefficients
     preference_svm_boundary = preference_svm_boundary / np.linalg.norm(preference_svm_coeff)
     preference_svm_coeff = preference_svm_coeff / np.linalg.norm(preference_svm_coeff)
@@ -127,9 +130,53 @@ def run_comparison_plots(num_preference_queries, num_membership_queries, ground_
     print("Differences computed are: {}".format(difference_values))
     return difference_values
 
+def run_preference_comparison(num_preference_query_list, num_membership_queries, ground_truth_reward, ground_truth_boundary, M,
+                              num_eval_samples=500, task='driver', method='nonbatch', provided_weights=None):
+    bsearch_num_samples = 2 ** num_membership_queries
+    max_num_pref_queries = max(num_preference_query_list)
+    if provided_weights is None:
+        preference_learned_reward_list = nonbatch(task, method, max_num_pref_queries, M, checkpoints=num_preference_query_list, weights=ground_truth_reward)
+    else:
+        preference_learned_reward_list = provided_weights
+    all_member_pref_accs = []
+    all_just_pref_accs = []
+    print("Completed preference queries.")
+    simulation_object = create_env(task)
+    # collect trajectories
+    for gt_reward in preference_learned_reward_list:
+        gt_reward = np.array(gt_reward)
+        # get the boundary and SVM values from the query methods
+        bsearch_sampled_set = collect_trajectories(simulation_object, method, bsearch_num_samples, gt_reward)
+        preference_bsearch_boundary = membership_threshold(lattice.sort_on_rewards(bsearch_sampled_set), simulation_object, ground_truth_reward, ground_truth_boundary, get_labels=False)
+
+        #compare the two
+        mem_pref_acc, just_pref_acc = get_sample_accuracy(ground_truth_reward, ground_truth_boundary, gt_reward,
+                                                          preference_bsearch_boundary, num_eval_samples, method, simulation_object)
+        all_member_pref_accs.append(mem_pref_acc)
+        all_just_pref_accs.append(just_pref_acc)
+    print("ALL ACCURACY VALUES:")
+    print(all_member_pref_accs)
+    print(all_just_pref_accs)
+    return all_member_pref_accs, all_just_pref_accs
+
+def get_sample_accuracy(ground_truth_reward, ground_truth_boundary, learned_reward, learned_boundary, num_samples, method, simulation_object):
+    no_member_sample = collect_trajectories(simulation_object, method, num_samples, learned_reward)
+    member_sample = collect_member_trajectories(simulation_object, method, num_samples, learned_reward, learned_boundary)
+    # now, evaluate the accuracies
+    no_member_count = 0.0
+    member_count = 0.0
+    for node in no_member_sample:
+        if np.sum(node.features * ground_truth_reward) > ground_truth_boundary:
+            no_member_count += 1.0
+    for node in member_sample:
+        if np.sum(node.features * ground_truth_reward) > ground_truth_boundary:
+            member_count += 1.0
+    print("accuracy for mem+pref is {} and for just pref is {}".format(member_count / num_samples, no_member_count / num_samples))
+    return member_count / num_samples, no_member_count / num_samples
 
 def collect_trajectories(simulation_object, samplemethod, num_samples, reward_values):
     trajectory_set = []
+    print("Collecting trajectories for method without provided boundary.")
     def add_traj(samplemethod, traj_set):
 
         sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
@@ -139,7 +186,30 @@ def collect_trajectories(simulation_object, samplemethod, num_samples, reward_va
         reward_A = np.sum(reward_values * phi_A)
         traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
     for idx in range(num_samples):
+        if idx % 100 == 0:
+            print("at idx {}".format(idx))
         add_traj(samplemethod, trajectory_set)
+    return trajectory_set
+
+def collect_member_trajectories(simulation_object, samplemethod, num_samples, reward_values, reward_boundary):
+    trajectory_set = []
+    print("Collecting trajectories based on provided boundary.")
+    def add_traj(samplemethod, traj_set):
+
+        sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
+        simulation_object.feed(sample_A)
+        phi_A = simulation_object.get_features()
+        # now, compute the reward for each sample
+        reward_A = np.sum(reward_values * phi_A)
+        if reward_A > reward_boundary:
+            traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
+            return True
+        else:
+            return False
+    while len(trajectory_set) < num_samples:
+        res = add_traj(samplemethod, trajectory_set)
+        if len(trajectory_set) % 100 == 0 and res:
+            print("at idx {}".format(len(trajectory_set)))
     return trajectory_set
 
 def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_membership_queries=0, task='driver', method="nonbatch"):
@@ -236,7 +306,7 @@ def get_accuracy(x,y,reward_bound=None,clssfr=None):
         return correct/len(x)
 
 
-def membership_threshold(sorted_lattice, simulation_object, get_labels=True):
+def membership_threshold(sorted_lattice, simulation_object, weights, threshold, get_labels=True):
     #now, begin getting membership query feedback on things
     remainder_to_search = sorted_lattice
     xs, ys = [], []
@@ -245,7 +315,7 @@ def membership_threshold(sorted_lattice, simulation_object, get_labels=True):
         current_candidate = remainder_to_search[current_idx]
         # ask: is this a member of the preferred set?
         print("current reward boundary is: {}".format(current_candidate.reward_value))
-        response = get_membership_feedback_auto(simulation_object, current_candidate.content)
+        response = get_membership_feedback_auto(simulation_object, current_candidate.content, weights=weights, threshold=threshold)
         if response == 1:
             # it's preferred: look at the lower rewards
             remainder_to_search = remainder_to_search[current_idx:]
@@ -259,7 +329,7 @@ def membership_threshold(sorted_lattice, simulation_object, get_labels=True):
         return remainder_to_search[0].reward_value, (xs, ys)
     return remainder_to_search[0].reward_value
 
-def svm_threshold(sampled_nodes, simulation_object, labeled_samples=None):
+def svm_threshold(sampled_nodes, simulation_object, weights, threshold, labeled_samples=None):
     # get membership query feedback on samples to collect positive and negative samples
     # treat the feature averages as the
     print("Beginning SVM membership query method.")
@@ -268,12 +338,16 @@ def svm_threshold(sampled_nodes, simulation_object, labeled_samples=None):
     if labeled_samples is None:
         # ask membership queries on provided samples
         for node in sampled_nodes:
-            response = get_membership_feedback_auto(simulation_object, node.content)
+            response = get_membership_feedback_auto(simulation_object, node.content, weights=weights, threshold=threshold)
             Xs.append(node.features)
             Ys.append(max(0, response))  # will be 1 for positive, 0 for negative, for SVM purposes
     else:
         Xs, Ys = labeled_samples
     # fit an SVM to the labeled samples
+    if sum(Ys) < 1:
+        # no positive responses: handle this case
+        print("ERROR: no positive examples in provided samples")
+        return 0, 0, -1
     clssfr = svm.LinearSVC()
     clssfr.fit(Xs, Ys)
     return clssfr.coef_, clssfr.intercept_,clssfr
