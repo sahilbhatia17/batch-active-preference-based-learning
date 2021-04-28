@@ -14,9 +14,7 @@ elif method == 'greedy' or method == 'medoids' or method == 'boundary_medoids' o
     b = int(sys.argv[5])
     demos.batch(task, method, N, M, b)
 elif method == "threshold":
-    if task != 'driver':
-        print("no reward function available for non-driver task")
-    else:
+    if task == 'driver':
         if N == 30:
             reward_weights = np.array([0.62867544, -0.49269658,  0.49139338,  0.34720284])
             reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
@@ -28,6 +26,15 @@ elif method == "threshold":
             reward_threshold = demos.find_threshold(N, M, reward_weights, task='driver', method="nonbatch")
         else:
             print("no reward weights, run preference query with N = ", N)
+    elif task == 'mountaincar':
+        reward_weights = np.array([-0.67978501, -0.56311196, 0.4698907])
+        reward_threshold = demos.find_threshold(N, M, reward_weights, task='mountaincar', method="nonbatch")
+    elif task == 'lunarlander':
+        reward_weights = np.array([])
+        reward_threshold = demos.find_threshold(N, M, reward_weights, task='lunarlander', method="nonbatch")
+    else:
+        print("no reward function available for non-driver task")
+
 elif method == "comparison":
     reward_weights = np.array([0.56687795 ,-0.51010378  ,0.5178173 , 0.38769675])
     boundary = 0.70
@@ -53,6 +60,7 @@ elif method == "dfa":
     automata_learning.create_dfa_dataset_file(reward_weights, boundary, mixed_examples + positive_examples,
                                               filename=filename)
     print("Saved trajectory encoding file to {}".format(filename))
+
 else:
     print('There is no method called ' + method)
 
