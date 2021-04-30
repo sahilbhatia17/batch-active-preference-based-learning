@@ -7,10 +7,11 @@ import demos
 
 class Node():
 
-    def __init__(self, content, reward_value=None, parents=None, features=None):
+    def __init__(self, content, reward_value=None, parents=None, features=None, full_features=None):
         self.content = content # the actual solution (e.g. a trace)
         self.reward_value = reward_value # the reward value, if applicable
         self.features = features
+        self.full_features = full_features
         if parents is None:
             self.parents = []
         else:

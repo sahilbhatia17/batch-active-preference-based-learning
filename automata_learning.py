@@ -16,7 +16,8 @@ TASK_MAP = {"driver" : DRIVING_FEATURES}
 def trajectory_to_discrete_alphabet(trajectory, task="driver", upperbound=1.0):
     # input is a feature of trajectories
     token_sequence = []
-
+    trajectory = np.array(trajectory)
+    print(trajectory)
     relevant_features = trajectory[:, TASK_MAP[task]]
     for feature_pair in relevant_features:
         # bin these features

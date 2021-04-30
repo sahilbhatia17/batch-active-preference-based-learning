@@ -7,6 +7,7 @@ import math
 import lattice
 from sklearn import svm
 import pickle
+import pdb
 
 def batch(task, method, N, M, b):
     if N % b != 0:
@@ -181,10 +182,11 @@ def collect_trajectories(simulation_object, samplemethod, num_samples, reward_va
 
         sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
         simulation_object.feed(sample_A)
+        full_content = simulation_object.get_features_full()
         phi_A = simulation_object.get_features()
         # now, compute the reward for each sample
         reward_A = np.sum(reward_values * phi_A)
-        traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
+        traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A, full_features=full_content))
     for idx in range(num_samples):
         if idx % 100 == 0:
             print("at idx {}".format(idx))
@@ -198,11 +200,12 @@ def collect_member_trajectories(simulation_object, samplemethod, num_samples, re
 
         sample_A, sample_B = run_algo(samplemethod, simulation_object, reward_values.reshape(1,-1))
         simulation_object.feed(sample_A)
+        full_content = simulation_object.get_features_full()
         phi_A = simulation_object.get_features()
         # now, compute the reward for each sample
         reward_A = np.sum(reward_values * phi_A)
         if reward_A > reward_boundary:
-            traj_set.append(lattice.Node(sample_A, reward_value=reward_A, features=phi_A))
+            traj_set.append(lattice.Node(full_content, reward_value=reward_A, full_features=full_content))
             return True
         else:
             return False
@@ -212,7 +215,7 @@ def collect_member_trajectories(simulation_object, samplemethod, num_samples, re
             print("at idx {}".format(len(trajectory_set)))
     return trajectory_set
 
-def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_membership_queries=0, task='driver', method="nonbatch"):
+def find_threshold(num_weighted_samples, num_random_samples, reward_values, gt_threshold, num_membership_queries=0, task='driver', method="nonbatch"):
     # first, sample the trajectories from the distribution\
     simulation_object = create_env(task)
     d = simulation_object.num_of_features
@@ -228,10 +231,10 @@ def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_
     w_true = np.array([ 0.56687795 ,-0.51010378  ,0.5178173 ,  0.38769675])
 
 
-    svm_reward_set = reward_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, method, num_weighted_samples, reward_values)
+    #svm_reward_set = reward_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, method, num_weighted_samples, reward_values)
     #adding n more samples to the svm dataset --> n + log(n) samples
     
-    svm_random_set = random_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, "random", num_weighted_samples, reward_values)
+    #svm_random_set = random_traj_set[:num_membership_queries] + collect_trajectories(simulation_object, "random", num_weighted_samples, reward_values)
     #adding n more samples to the svm dataset --> n + log(n) samples
 
     
@@ -258,31 +261,32 @@ def find_threshold(num_weighted_samples, num_random_samples, reward_values, num_
         x.append(node.features)
         reward = np.sum(np.dot(w_true,node.features))
         r.append(reward)
-        if reward < 0.74:
+        if reward < gt_threshold:
             y.append(0)
         else:
             y.append(1)
-    print(y)
+    #print(y)
 
     #now, begin getting membership query feedback on things
-    bsearch_reward_bound, labeled_data = membership_threshold(sorted_lattice, simulation_object, get_labels=True)
-    svm_bsearch_coeff, svm_bsearch_inter, clssfr_bsearch = svm_threshold(svm_reward_set, simulation_object, labeled_samples=labeled_data)
-    svm_reward_coeff, svm_reward_inter, clssfr_reward = svm_threshold(svm_reward_set, simulation_object)
-    svm_random_coeff, svm_random_inter, clssfr_random = svm_threshold(svm_random_set, simulation_object)
+    bsearch_reward_bound, labeled_data = membership_threshold(sorted_lattice, simulation_object, reward_values, gt_threshold, get_labels=True)
+    full_features = simulation_object.get_features_full()
+    #svm_bsearch_coeff, svm_bsearch_inter, clssfr_bsearch = svm_threshold(svm_reward_set, simulation_object, labeled_samples=labeled_data)
+    #svm_reward_coeff, svm_reward_inter, clssfr_reward = svm_threshold(svm_reward_set, simulation_object)
+    #svm_random_coeff, svm_random_inter, clssfr_random = svm_threshold(svm_random_set, simulation_object)
     # finished process
     print("Reward boundary retrieved from binary search method is {}".format(bsearch_reward_bound))
-    print("SVM coefficient and intercept for same queries as binary search are: {} and {}".format(svm_bsearch_coeff, svm_bsearch_inter))
-    print("SVM coefficient and intercept for reward-sampled queries are: {} and {}".format(svm_reward_coeff, svm_reward_inter))
-    print("SVM coefficient and intercept for random-sampled queries are: {} and {}".format(svm_random_coeff, svm_random_inter))
+    #print("SVM coefficient and intercept for same queries as binary search are: {} and {}".format(svm_bsearch_coeff, svm_bsearch_inter))
+    #print("SVM coefficient and intercept for reward-sampled queries are: {} and {}".format(svm_reward_coeff, svm_reward_inter))
+    #print("SVM coefficient and intercept for random-sampled queries are: {} and {}".format(svm_random_coeff, svm_random_inter))
     print("Reward weights for task are {}".format(reward_values))
 
     acc_bsearch = get_accuracy(r,y,reward_bound=bsearch_reward_bound,clssfr=None)
-    acc_svm_learnt = get_accuracy(x,y,reward_bound=None,clssfr=clssfr_reward)
-    acc_svm_random = get_accuracy(x,y,reward_bound=None,clssfr=clssfr_random)
+    #acc_svm_learnt = get_accuracy(x,y,reward_bound=None,clssfr=clssfr_reward)
+    #acc_svm_random = get_accuracy(x,y,reward_bound=None,clssfr=clssfr_random)
 
     print("Accuracy for binary search is ", acc_bsearch)
-    print("Accuracy for svm with reward-sampled queries is ", acc_svm_learnt)
-    print("Accuracy for svm with randomly-sampled queries is ", acc_svm_random)
+    #print("Accuracy for svm with reward-sampled queries is ", acc_svm_learnt)
+    #print("Accuracy for svm with randomly-sampled queries is ", acc_svm_random)
 
 def get_accuracy(x,y,reward_bound=None,clssfr=None):
     if clssfr is not None:
@@ -306,7 +310,7 @@ def get_accuracy(x,y,reward_bound=None,clssfr=None):
         return correct/len(x)
 
 
-def membership_threshold(sorted_lattice, simulation_object, weights, threshold, get_labels=True):
+def membership_threshold(sorted_lattice, simulation_object, weights, threshold, get_labels=True, get_min=True):
     #now, begin getting membership query feedback on things
     remainder_to_search = sorted_lattice
     xs, ys = [], []
@@ -325,9 +329,14 @@ def membership_threshold(sorted_lattice, simulation_object, weights, threshold, 
             xs.append(current_candidate.features)
             ys.append(max(0, response))
     # finished process
+    if get_min:
+        reward = np.min(np.dot(remainder_to_search[0].full_features, weights))
+    else:
+        reward = remainder_to_search[0].reward_value
     if get_labels:
-        return remainder_to_search[0].reward_value, (xs, ys)
-    return remainder_to_search[0].reward_value
+        return reward, (xs, ys)
+
+    return reward
 
 def svm_threshold(sampled_nodes, simulation_object, weights, threshold, labeled_samples=None):
     # get membership query feedback on samples to collect positive and negative samples

@@ -1,4 +1,4 @@
-from simulator import DrivingSimulation, GymSimulation, MujocoSimulation
+from simulator import DrivingSimulation, GymSimulation, MujocoSimulation, CirclesSimulation
 import numpy as np
 
 
@@ -319,3 +319,8 @@ class Tosser(MujocoSimulation):
         ctrl_value = value[self.state_size:self.feed_size]
         self.initial_state.qpos[:] = initial_state
         self.set_ctrl(ctrl_value)
+
+class Circles(CirclesSimulation):
+
+    def __init__(self):
+        pass

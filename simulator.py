@@ -4,7 +4,7 @@ import os
 import gym
 import time
 import numpy as np
-
+import basic_motion_planning
 from world import World
 import car
 import dynamics
@@ -231,3 +231,52 @@ class DrivingSimulation(Simulation):
             self.viewer.run_modified(history_x=[self.robot_history_x, self.human_history_x], history_u=[self.robot_history_u, self.human_history_u])
         self.viewer.window.close()
         self.viewer = None
+
+
+class CirclesSimulation(Simulation):
+    def __init__(self, name, total_time=50, recording_time=[0,50]):
+        super(DrivingSimulation, self).__init__(name, total_time=total_time, recording_time=recording_time)
+        self.start = [0,0]
+        self.expand_dis = 3.0
+        self.goal = [15, 14]
+        self.rand_area = [-2, 15]
+        self.blue_obstacle_list = [(3, 6, 1),  (3, 10, 1), (9, 5, 1),
+                                   (12, 3, 1), (14, 7, 1),(12, 12, 1),(5, 13, 1),]
+        self.pink_obstacle_list = [(8, 10, 1), (7, 5, 1), (10, 1, 1), (13, 10, 1)]
+        self.purple_obstacle_list = [(3, 8, 1), (5, 12, 1), (5, 5, 1)]
+        self.max_iter = 100
+
+        self.rrt = basic_motion_planning.RRT(self.start, self.goal, self.blue_obstacle_list, self.pink_obstacle_list,
+                                             self.purple_obstacle_list, rand_area=self.rand_area,
+                                             expand_dis=self.expand_dis, max_iter=self.max_iter)
+
+        self.initial_state = [self.robot.x, self.human.x]
+        self.input_size = 2
+        self.reset()
+        self.viewer = None
+
+    def initialize_positions(self):
+        pass
+
+    def reset(self):
+        super(CirclesSimulation, self).reset()
+        self.initialize_positions()
+
+    def run(self, reset=False):
+        if reset:
+            self.reset()
+        else:
+            pass
+
+    # I keep all_info variable for the compatibility with mujoco wrapper
+    def get_trajectory(self, all_info=True):
+        if not self.alreadyRun:
+            self.run()
+        return self.trajectory.copy()
+
+    def get_recording(self, all_info=True):
+        traj = self.get_trajectory(all_info=all_info)
+        return traj[self.recording_time[0]:self.recording_time[1]]
+
+    def watch(self, repeat_count=1):
+        pass
