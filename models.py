@@ -322,5 +322,18 @@ class Tosser(MujocoSimulation):
 
 class Circles(CirclesSimulation):
 
-    def __init__(self):
-        pass
+
+    def __init__(self, total_time=30, recording_time=[0,30]):
+        super(Circles ,self).__init__(name='tosser', total_time=total_time, recording_time=recording_time)
+        self.ctrl_size = 2
+        self.state_size = 2
+        self.feed_size = self.ctrl_size + self.state_size
+        self.ctrl_bounds = [(-1,1)]*self.ctrl_size
+        self.state_bounds = [(0, 15), (0, 15)]
+        self.feed_bounds = self.state_bounds + self.ctrl_bounds
+        self.num_of_features = 3
+
+    def get_features(self):
+        traj = self.get_trajectory(all_info=False)
+        list_of_features = self.get_features_over_trajectory(traj)
+        return np.average(list_of_features, axis=0)
