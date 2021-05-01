@@ -1,7 +1,7 @@
 import demos
 import sys
 import numpy as np
-import automata_learning
+#import automata_learning
 
 task   = sys.argv[1].lower()
 method = sys.argv[2].lower()

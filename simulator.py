@@ -10,7 +10,10 @@ import car
 import dynamics
 import visualize
 import lane
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Qt5Agg")
+from matplotlib import pyplot as plt
 
 
 class Simulation(object):
@@ -281,8 +284,8 @@ class CirclesSimulation(Simulation):
     def run(self, reset=False):
         if reset:
             self.reset()
-        else:
-            self.initialize_positions()
+#        else:
+#            self.initialize_positions()
         self.trajectory.append(self.current_position)
         for i in range(self.total_time):
             self.current_position[0] += self.ctrl_array[i][0]
@@ -302,9 +305,10 @@ class CirclesSimulation(Simulation):
 
     def watch(self, repeat_count=1):
         self.rrt.draw_graph()
+        print(self.trajectory)
         plt.plot([x for (x, y) in self.trajectory], [y for (x, y) in self.trajectory], '-r', label='trajectory')
         plt.grid(True)
         plt.legend()
         plt.show(block=False)
-        plt.pause(8)
-        plt.close()
+#        plt.pause(8)
+#        plt.close()

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize as opt
 import algos
-from models import Driver, LunarLander, MountainCar, Swimmer, Tosser
+from models import Driver, LunarLander, MountainCar, Swimmer, Tosser, Circles
 
 
 def get_feedback(simulation_object, input_A, input_B):
@@ -79,6 +79,8 @@ def create_env(task):
         return Swimmer()
     elif task == 'tosser':
         return Tosser()
+    elif task == 'circles':
+        return Circles()
     else:
         print('There is no task called ' + task)
         exit(0)

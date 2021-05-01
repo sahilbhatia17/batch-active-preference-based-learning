@@ -13,7 +13,10 @@ import math
 import numpy as np
 from scipy import stats
 import scipy.spatial
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Qt5Agg")
+from matplotlib import pyplot as plt
 from IPython import display
 
 class RRT:
@@ -147,7 +150,7 @@ class RRT:
             if node.parent:
                 plt.plot(node.path_x, node.path_y, "-g")
 
-        for (ox, oy, size) in self.obstacle_list:
+        for (ox, oy, size) in get_obstacle_list():
             self.plot_circle(ox, oy, size)
 
         plt.plot(self.start.x, self.start.y, "xr")

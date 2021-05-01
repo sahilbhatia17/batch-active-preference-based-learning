@@ -320,9 +320,8 @@ class Tosser(MujocoSimulation):
         self.initial_state.qpos[:] = initial_state
         self.set_ctrl(ctrl_value)
 
+
 class Circles(CirclesSimulation):
-
-
     def __init__(self, total_time=30, recording_time=[0,30]):
         super(Circles ,self).__init__(name='tosser', total_time=total_time, recording_time=recording_time)
         self.ctrl_size = 2
@@ -334,6 +333,33 @@ class Circles(CirclesSimulation):
         self.num_of_features = 3
 
     def get_features(self):
-        traj = self.get_trajectory(all_info=False)
+        traj = self.get_recording(all_info=False)
         list_of_features = self.get_features_over_trajectory(traj)
+        #returns the average distance from the trajectory to each colored obstacle
         return np.average(list_of_features, axis=0)
+
+    @property
+    def state(self):
+        return self.sim.get_state()
+        
+    @state.setter
+    def state(self, value):
+        self.reset()
+        temp_state = self.initial_state
+        temp_state.qpos[:] = value[:]
+        self.initial_state = temp_state
+
+    def set_ctrl(self, value):
+        arr = [[0]*self.input_size]*self.total_time
+        interval_count = len(value)//self.input_size
+        interval_time = int(self.total_time / interval_count)
+        arr = np.array(arr).astype(float)
+        j = 0
+        for i in range(interval_count):
+            arr[i*interval_time:(i+1)*interval_time] = [value[j], value[j+1]]
+            j += 2
+        self.ctrl = list(arr)
+
+    def feed(self, value):
+        ctrl_value = value[:]
+        self.set_ctrl(ctrl_value)
