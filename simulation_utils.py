@@ -10,7 +10,7 @@ def get_feedback(simulation_object, input_A, input_B):
     simulation_object.feed(input_B)
     phi_B = simulation_object.get_features()
     psi = np.array(phi_A) - np.array(phi_B)
-    print(np.array(phi_A).shape)
+#    print(np.array(phi_A).shape)
     s = 0
     while s==0:
         selection = input('A/B to watch, 1/2 to vote: ').lower()

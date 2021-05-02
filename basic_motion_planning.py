@@ -58,6 +58,7 @@ class RRT:
         self.blue_obstacle_list = blue_obstacle_list
         self.pink_obstacle_list = pink_obstacle_list
         self.purple_obstacle_list = purple_obstacle_list
+        self.obstacle_list = get_obstacle_list()
         self.node_list = []
 
     def planning(self, animation=True):
@@ -150,8 +151,15 @@ class RRT:
             if node.parent:
                 plt.plot(node.path_x, node.path_y, "-g")
 
-        for (ox, oy, size) in get_obstacle_list():
+        for (ox, oy, size) in self.obstacle_list:
+            self.plot_circle(ox, oy, size, color='black')
+            
+        for (ox, oy, size) in self.blue_obstacle_list:
             self.plot_circle(ox, oy, size)
+        for (ox, oy, size) in self.pink_obstacle_list:
+            self.plot_circle(ox, oy, size, color='pink')
+        for (ox, oy, size) in self.purple_obstacle_list:
+            self.plot_circle(ox, oy, size, color='purple')
 
         plt.plot(self.start.x, self.start.y, "xr")
         plt.plot(self.end.x, self.end.y, "xr")

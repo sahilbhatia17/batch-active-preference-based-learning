@@ -9,7 +9,9 @@ N = int(sys.argv[3])
 M = int(sys.argv[4])
 
 if method == 'nonbatch' or method == 'random':
-    demos.nonbatch(task, method, N, M)
+    #arb weights just to see if sampler would update weights with nonbatch        
+    weights = [0.5, 0.5, 0.5]
+    demos.nonbatch(task, method, N, M, weights)
 elif method == 'greedy' or method == 'medoids' or method == 'boundary_medoids' or method == 'successive_elimination':
     b = int(sys.argv[5])
     demos.batch(task, method, N, M, b)

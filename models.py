@@ -336,6 +336,7 @@ class Circles(CirclesSimulation):
         traj = self.get_recording(all_info=False)
         list_of_features = self.get_features_over_trajectory(traj)
         #returns the average distance from the trajectory to each colored obstacle
+        print(np.average(list_of_features, axis=0))
         return np.average(list_of_features, axis=0)
 
     @property
