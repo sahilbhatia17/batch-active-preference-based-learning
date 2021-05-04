@@ -281,21 +281,24 @@ class CirclesSimulation(Simulation):
         self.current_position = [0, 0]
         self.trajectory = []
 
+    def initialize_positions(self):
+        self.current_position = [0, 0]
+        self.trajectory = []
+        self.trajectory.append(self.current_position[:])
+
     def run(self, reset=False):
         if reset:
             self.reset()
         else:
-            self.current_position = self.initial_state
-            #initialize_positions()
-        self.trajectory.append(self.current_position)
-#        print(self.ctrl_array)
-#        print(self.total_time)
-        for i in range(self.total_time):
-            self.trajectory.append(self.ctrl_array[i])
-#            self.current_position[0] += self.ctrl_array[i][0]
-#            self.current_position[1] += self.ctrl_array[i][1]
-#            self.trajectory.append(self.current_position)
+            self.initialize_positions()
+            
 #        print(self.trajectory)
+#        print(self.ctrl_array)
+        for i in range(self.total_time):
+            self.current_position[0] += self.ctrl_array[i][0]
+            self.current_position[1] += self.ctrl_array[i][1]
+            self.trajectory.append(self.current_position[:])
+
         self.alreadyRun = True
 
     # I keep all_info variable for the compatibility with mujoco wrapper
@@ -315,5 +318,5 @@ class CirclesSimulation(Simulation):
         plt.grid(True)
         plt.legend()
         plt.show(block=False)
-#        plt.pause(8)
-#        plt.close()
+        plt.pause(2)
+        plt.close()

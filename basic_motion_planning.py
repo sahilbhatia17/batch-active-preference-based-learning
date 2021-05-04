@@ -150,9 +150,10 @@ class RRT:
         for node in self.node_list:
             if node.parent:
                 plt.plot(node.path_x, node.path_y, "-g")
-
-        for (ox, oy, size) in self.obstacle_list:
-            self.plot_circle(ox, oy, size, color='black')
+    
+        #commenting out the black obstacles for the preference learning tests for now
+#        for (ox, oy, size) in self.obstacle_list:
+#            self.plot_circle(ox, oy, size, color='black')
             
         for (ox, oy, size) in self.blue_obstacle_list:
             self.plot_circle(ox, oy, size)
