@@ -69,7 +69,7 @@ def nonbatch(task, method, N, M, weights, checkpoints=None):
     s_set = []
     input_A = np.random.uniform(low=2*lower_input_bound, high=2*upper_input_bound, size=(2*simulation_object.feed_size))
     input_B = np.random.uniform(low=2*lower_input_bound, high=2*upper_input_bound, size=(2*simulation_object.feed_size))
-    psi, s = get_feedback_auto(simulation_object, input_A, input_B, weights) # psi is the difference, s is the 1 or -1 signal
+    psi, s = get_feedback(simulation_object, input_A, input_B)#, weights) # psi is the difference, s is the 1 or -1 signal
     psi_set.append(psi)
     s_set.append(s)
     for i in range(1, N):
@@ -82,7 +82,7 @@ def nonbatch(task, method, N, M, weights, checkpoints=None):
             checkpointed_weights.append(mean_w_samples/np.linalg.norm(mean_w_samples))
             print("Weights saved at iteration {}".format(i))
         input_A, input_B = run_algo(method, simulation_object, w_samples)
-        psi, s = get_feedback_auto(simulation_object, input_A, input_B, weights)
+        psi, s = get_feedback(simulation_object, input_A, input_B)#, weights)
         psi_set.append(psi)
         s_set.append(s)
     w_sampler.A = psi_set
