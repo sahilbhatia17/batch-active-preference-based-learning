@@ -10,7 +10,7 @@ M = int(sys.argv[4])
 
 if method == 'nonbatch' or method == 'random':
     #arb weights just to see if sampler would update weights with nonbatch        
-    weights = [0.5, 0.5, 0.5]
+    weights = [-0.2338154,   0.62484734, -0.74491353]
     demos.nonbatch(task, method, N, M, weights)
 elif method == 'greedy' or method == 'medoids' or method == 'boundary_medoids' or method == 'successive_elimination':
     b = int(sys.argv[5])
@@ -40,6 +40,10 @@ elif method == "threshold":
         reward_weights = np.array([])
         gt_threshold = 0.84
         reward_threshold = demos.find_threshold(num_samples, M, reward_weights, gt_threshold, task='lunarlander', method="nonbatch")
+    elif task == "circles":
+        reward_weights = np.array( [-0.2259573,  0.59799658, -0.76898855])
+        gt_threshold = 0.023990068857129017
+        reward_threshold = demos.find_threshold(num_samples, M, reward_weights, gt_threshold, task='circles', method='nonbatch')
     else:
         print("no reward function available for non-driver task")
 
@@ -52,22 +56,6 @@ elif method == "comparison":
                            [0.59673816, -0.51312493, 0.48763488,  0.37791347]]
     demos.run_preference_comparison([10, 20, 30, 40, 50, 60], 10, reward_weights, boundary, M,
                          task='driver', method='nonbatch', provided_weights=learned_reward_list)
-elif method == "dfa":
-    reward_weights = np.array([0.60316787, -0.51733234, 0.48007103, 0.37160137])
-    boundary = 0.70
-    learned_rewards = np.array([0.59673816, -0.51312493, 0.48763488,  0.37791347])
-    learned_boundary = 0.70
-    mixed_ex_num = 10#350
-    pos_ex_num = 10#150
-    filename = "dfa_trial_1"
-    #sample trajectories using the learned rewards and weights
-    mixed_examples = automata_learning.collect_trajectories_wrapper("nonbatch", mixed_ex_num, learned_rewards, task="driver")
-    positive_examples = automata_learning.collect_trajectories_wrapper("nonbatch", pos_ex_num, learned_rewards, task="driver",
-                                                                       membership_bound=learned_boundary)
-    print("collected trajectories for DFA learning.")
-    automata_learning.create_dfa_dataset_file(reward_weights, boundary, mixed_examples + positive_examples,
-                                              filename=filename)
-    print("Saved trajectory encoding file to {}".format(filename))
 
 else:
     print('There is no method called ' + method)

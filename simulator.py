@@ -248,12 +248,15 @@ class CirclesSimulation(Simulation):
         self.upper_bound = 15
         self.blue_obstacle_list = [(3, 6, 1),  (3, 10, 1), (9, 5, 1),
                                    (14, 7, 1),(12, 12, 1),(5, 13, 1),
-                                   (-1, 2, 1), (-1, 4, 1), (3, -1, 1), (5, -1, 1), (-1, 0, 1), (0, -1, 1)]
-        self.pink_obstacle_list = [(8, 10, 1), (7, 5, 1), (10, 1, 1), (13, 10, 1), (15, 4, 1), (14, 5, 1)]
-        self.purple_obstacle_list = [(3, 8, 1), (5, 12, 1), (5, 5, 1), (12, 3, 1)]
+                                   (3, -1, 1), (5, -1, 1),
+                                   #added
+                                   (-1, 4, 1), (0, 8, 1)]
+        self.pink_obstacle_list = [(8, 10, 1), (7, 5, 1), (10, 1, 1), (13, 10, 1), (15, 4, 1),
+                                   (14, 5, 1), (2, 4, 1), (5, 1, 1)]
+        self.purple_obstacle_list = [(3, 8, 1), (5, 12, 1), (5, 5, 1), (12, 3, 1), (2, 7, 1), (-1, -1, 1)]
         self.max_iter = 100
         self.rrt = basic_motion_planning.RRT(self.initial_state, self.goal, self.blue_obstacle_list, self.pink_obstacle_list,
-                                             self.purple_obstacle_list, rand_area=self.rand_area,
+                                             self.purple_obstacle_list, [], rand_area=self.rand_area,
                                              expand_dis=self.expand_dis, max_iter=self.max_iter)
 
         self.current_position = self.initial_state
@@ -275,6 +278,14 @@ class CirclesSimulation(Simulation):
                 feature_value += (size - distance_from_center)
         return feature_value
 
+    def compute_features_single(self, xcoord, ycoord):
+        blue_feature_value = self.compute_feature_tolerance(xcoord, ycoord, self.blue_obstacle_list)
+        pink_feature_value = self.compute_feature_tolerance(xcoord, ycoord, self.pink_obstacle_list)
+        purple_feature_value = self.compute_feature_tolerance(xcoord, ycoord, self.purple_obstacle_list)
+        # the bigger this value, the more "regions" we have entered / more deeply
+
+        return np.array([blue_feature_value, pink_feature_value, purple_feature_value])
+
     def get_features_over_trajectory(self, trajectory):
         # compute minimum distance from each obstacle in the list:
         feature_list = np.zeros((len(trajectory), 3))
@@ -287,6 +298,9 @@ class CirclesSimulation(Simulation):
             purple_feat = self.compute_feature_tolerance(xcoord, ycoord, self.purple_obstacle_list)
             feature_list[idx] = [blue_feat, pink_feat, purple_feat]
         return feature_list
+
+    def get_features_full(self):
+        return self.get_features_over_trajectory(self.trajectory)
 
 
     def reset(self):
